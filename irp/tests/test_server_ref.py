@@ -96,11 +96,16 @@ def test_chat_completions_signature_verifies(server):
 
 
 def test_log_root_endpoint(server):
-    """GET /v1/irp/log/root returns 200 + JSON with at least a 'root' field."""
+    """GET /v1/irp/log/root returns 200 + JSON matching spec format."""
     r = httpx.get(f"{server}/v1/irp/log/root")
     assert r.status_code == 200
     data = r.json()
-    assert "root" in data
+    assert "root_hash" in data
+    assert "tree_size" in data
+    assert "timestamp" in data
+    assert "signature" in data
+    assert "public_key" in data
+    assert "signature_alg" in data
 
 
 def test_log_proof_unknown_id(server):
