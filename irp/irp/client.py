@@ -163,14 +163,16 @@ class IRPClient:
                     local_output_text=output_text,
                 )
 
-                # Surface hash mismatch warnings
+                # Surface hash mismatch warnings (don't downgrade "error")
                 if receipt.input_hash != local_input_hash:
-                    irp_response.irp_verification.status = "warning"
+                    if irp_response.irp_verification.status != "error":
+                        irp_response.irp_verification.status = "warning"
                     irp_response.irp_verification.errors.append(
                         f"HASH_MISMATCH: input_hash mismatch (server={receipt.input_hash}, local={local_input_hash})"
                     )
                 if receipt.output_hash != local_output_hash:
-                    irp_response.irp_verification.status = "warning"
+                    if irp_response.irp_verification.status != "error":
+                        irp_response.irp_verification.status = "warning"
                     irp_response.irp_verification.errors.append(
                         f"HASH_MISMATCH: output_hash mismatch (server={receipt.output_hash}, local={local_output_hash})"
                     )

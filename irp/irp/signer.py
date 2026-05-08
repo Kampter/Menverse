@@ -25,9 +25,9 @@ def _build_legacy_canonical_dict(receipt) -> dict:
         "output_tokens": receipt.output_tokens,
         "total_tokens": receipt.total_tokens,
     }
-    if receipt.input_hash is not None:
+    if receipt.input_hash:
         data["input_hash"] = receipt.input_hash
-    if receipt.output_hash is not None:
+    if receipt.output_hash:
         data["output_hash"] = receipt.output_hash
     return data
 

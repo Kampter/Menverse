@@ -27,7 +27,7 @@ class TestGenerateNonce:
 
     def test_generate_nonce_length(self):
         nonce = generate_nonce()
-        assert len(nonce) >= 22
+        assert len(nonce) == 22
 
 
 class TestBuildCanonicalDict:
