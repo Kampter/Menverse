@@ -1,8 +1,15 @@
 """Data models for IRP (Inference Receipt Protocol)."""
 
+import base64
+import secrets
 from dataclasses import dataclass, field
 from typing import Optional
 from datetime import datetime
+
+
+def generate_nonce() -> str:
+    """Generate a 128-bit random nonce, base64-encoded (22 chars, no padding)."""
+    return base64.b64encode(secrets.token_bytes(16)).decode("ascii").rstrip("=")
 
 
 @dataclass
@@ -56,6 +63,11 @@ class Receipt:
     # Raw content hashes for verification
     input_hash: Optional[str] = None
     output_hash: Optional[str] = None
+
+    # IRP protocol metadata
+    nonce: str = ""
+    version: str = "0.1.0"
+    policy_id: Optional[str] = None
 
     def __post_init__(self):
         if self.total_tokens == 0:

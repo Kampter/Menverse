@@ -10,15 +10,18 @@ Provides client-side verification of inference receipts including:
 - Audit logging
 """
 
-from .models import Receipt, VerificationResult, LatencyMetrics
+from .models import Receipt, VerificationResult, LatencyMetrics, generate_nonce
 from .receipt import ReceiptValidator
+from .signer import build_canonical_dict
 from .client import IRPClient
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __all__ = [
     "Receipt",
     "VerificationResult",
     "LatencyMetrics",
     "ReceiptValidator",
     "IRPClient",
+    "generate_nonce",
+    "build_canonical_dict",
 ]

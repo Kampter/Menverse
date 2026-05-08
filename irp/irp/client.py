@@ -141,16 +141,39 @@ class IRPClient:
         # Create IRP response
         irp_response = IRPResponse(data, receipt)
 
-        # Verify if enabled
-        if self._validator and receipt and json_body:
+        # Compute hashes and validate in a single block when possible
+        if receipt and json_body:
             messages = json_body.get("messages", [])
+            input_canonical = json.dumps(messages, sort_keys=True, separators=(",", ":")) if messages else ""
             output_text = irp_response.get_output_text()
 
-            irp_response.irp_verification = self._validator.verify(
-                receipt=receipt,
-                local_messages=messages if messages else None,
-                local_output_text=output_text,
-            )
+            local_input_hash = hash_content(input_canonical)
+            local_output_hash = hash_content(output_text)
+
+            # Server-provided hashes take precedence; fill in missing ones
+            if receipt.input_hash is None:
+                receipt.input_hash = local_input_hash
+            if receipt.output_hash is None:
+                receipt.output_hash = local_output_hash
+
+            if self._validator:
+                irp_response.irp_verification = self._validator.verify(
+                    receipt=receipt,
+                    local_messages=messages if messages else None,
+                    local_output_text=output_text,
+                )
+
+                # Surface hash mismatch warnings
+                if receipt.input_hash != local_input_hash:
+                    irp_response.irp_verification.status = "warning"
+                    irp_response.irp_verification.errors.append(
+                        f"HASH_MISMATCH: input_hash mismatch (server={receipt.input_hash}, local={local_input_hash})"
+                    )
+                if receipt.output_hash != local_output_hash:
+                    irp_response.irp_verification.status = "warning"
+                    irp_response.irp_verification.errors.append(
+                        f"HASH_MISMATCH: output_hash mismatch (server={receipt.output_hash}, local={local_output_hash})"
+                    )
 
         return irp_response
 
