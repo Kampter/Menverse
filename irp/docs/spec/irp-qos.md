@@ -11,7 +11,7 @@
 
 This document defines the **Quality of Service (QoS) Profile** for the
 Inference Receipt Protocol (IRP). It specifies five normative QoS classes
-(`real-time`, `interactive`, `standard`, `batch`, `background`) along with
+(`realtime`, `interactive`, `standard`, `batch`, `background`) along with
 their service-level semantics: latency budgets, retry behaviour, scheduling
 priority, default billing multipliers, and intended use cases.
 
@@ -61,7 +61,7 @@ All time values are integer milliseconds unless otherwise stated.
 
 Inference workloads span at least four orders of magnitude in latency
 sensitivity, from sub-100 ms voice agents to overnight batch jobs.
-A single SLA cannot serve all of them: setting it to "real-time"
+A single SLA cannot serve all of them: setting it to "realtime"
 forces the provider to over-provision for cold workloads, while
 setting it to "best effort" makes interactive products unusable.
 
@@ -91,7 +91,7 @@ The five classes map to the use cases described informally in the
 
 | Class           | Identifier             | Tier | Typical use case            |
 |-----------------|------------------------|:----:|------------------------------|
-| Real-time       | `irp.qos.real-time`    | 0    | Live voice / video agents    |
+| Real-time       | `irp.qos.realtime`    | 0    | Live voice / video agents    |
 | Interactive     | `irp.qos.interactive`  | 1    | Chat UI, IDE assistant       |
 | Standard        | `irp.qos.standard`     | 2    | Document generation, RAG     |
 | Batch           | `irp.qos.batch`        | 3    | Async bulk jobs, evaluations |
@@ -110,13 +110,26 @@ change the structure of frames or receipts defined in
 
 - Defines additional request/response headers
   ([Section 6](#6-header-fields)).
-- Reserves error code `5000 SLA_VIOLATED` in the IRP error registry
+- Reserves error code `5008 SLA_VIOLATED` in the IRP error registry
   ([Section 5.3](#53-sla-violation)).
 - Adds an OPTIONAL `qos` field to the receipt for downstream audit
   ([Section 5.4](#54-receipt-fields)).
 
 A provider that does not implement this profile MUST simply ignore
 the headers; clients MUST be prepared for that case.
+
+> **Compatibility note (IRP Core v0.1):** IRP Core defines coarse
+> latency targets (e.g. "Realtime < 100 ms") and example pricing
+> multipliers in its Discovery examples. Those values are
+> illustrative. The normative SLA parameters (TTFT, total latency,
+> billing multipliers) are defined in this document and MUST take
+> precedence when the QoS Profile is in use. In particular:
+> - `realtime` target TTFT is **200 ms** (not < 100 ms).
+> - `interactive` target TTFT is **800 ms** (not < 1 s).
+> - `standard` target TTFT is **2 000 ms** (not < 10 s).
+> - Default billing multipliers are **2.0× / 1.5× / 1.0× / 0.5× / 0.3×**
+>   (see [Section 4.1](#41-sla-parameter-matrix-summary)).
+> - `background` has **no formal latency target** (best effort).
 
 ---
 
@@ -141,9 +154,9 @@ This section defines, for each of the five classes:
 The following table summarises the normative defaults. Detailed
 prose for each class follows in Sections 4.2 - 4.6.
 
-| Param \ Class           | real-time | interactive | standard | batch  | background |
+| Param \ Class           | realtime | interactive | standard | batch  | background |
 |-------------------------|:---------:|:-----------:|:--------:|:------:|:----------:|
-| Identifier suffix       | `real-time` | `interactive` | `standard` | `batch` | `background` |
+| Identifier suffix       | `realtime` | `interactive` | `standard` | `batch` | `background` |
 | Numeric tier            | 0         | 1           | 2        | 3      | 4          |
 | Target TTFT (ms)        | 200       | 800         | 2 000    | 30 000 | none       |
 | Target total (ms)       | 1 500     | 5 000       | 30 000   | 3 600 000 | none    |
@@ -159,10 +172,10 @@ provider's `standard` per-token price. Providers MAY override
 these values but MUST advertise the override in their service
 descriptor (see [Section 5.5](#55-advertising-overrides)).
 
-### 4.2 `real-time`
+### 4.2 `realtime`
 
-- **Identifier**: `irp.qos.real-time`
-- **Short name**: `real-time`
+- **Identifier**: `irp.qos.realtime`
+- **Short name**: `realtime`
 - **Numeric tier**: `0`
 - **Target TTFT**: 200 ms (server-measured, p95).
 - **Target total latency**: 1 500 ms (p95) for short responses
@@ -171,9 +184,9 @@ descriptor (see [Section 5.5](#55-advertising-overrides)).
   internally retry the upstream model call; partial output already
   emitted to the client MUST NOT be replayed. Clients MUST NOT
   automatically retry on transient errors at this tier.
-- **Scheduling priority**: `real-time` requests preempt all lower
+- **Scheduling priority**: `realtime` requests preempt all lower
   tiers. Under sustained overload, the provider SHOULD reject new
-  `real-time` requests rather than degrade service for in-flight
+  `realtime` requests rather than degrade service for in-flight
   ones (see [Section 5.2](#52-downgrade)).
 - **Default billing multiplier**: **2.0×** the provider's
   `standard` rate.
@@ -194,11 +207,11 @@ descriptor (see [Section 5.5](#55-advertising-overrides)).
 - **Target TTFT**: 800 ms (p95).
 - **Target total latency**: 5 000 ms (p95) for typical chat-length
   responses (≤ 1 024 output tokens).
-- **Retry semantics**: **at-most-once**. As with `real-time`, the
+- **Retry semantics**: **at-most-once**. As with `realtime`, the
   provider MUST NOT replay partial output. Clients MAY retry on
   transport-level failures provided no tokens were observed.
 - **Scheduling priority**: preempts `standard`, `batch`,
-  `background`. Yields to `real-time`.
+  `background`. Yields to `realtime`.
 - **Default billing multiplier**: **1.5×**.
 - **Streaming**: RECOMMENDED.
 - **Use cases**:
@@ -220,7 +233,7 @@ descriptor (see [Section 5.5](#55-advertising-overrides)).
   `Idempotency-Key` (see [IRP Core Protocol](./irp-core.md)) so
   duplicates can be suppressed.
 - **Scheduling priority**: preempts `batch`, `background`.
-  Yields to `real-time`, `interactive`.
+  Yields to `realtime`, `interactive`.
 - **Default billing multiplier**: **1.0×** (this is the reference
   rate).
 - **Streaming**: OPTIONAL.
@@ -355,21 +368,21 @@ When a downgrade occurs, the provider:
 
 If the provider accepts a request at class `C` but fails to meet
 the latency budget of `C` (TTFT or total), the provider MUST
-emit an `ERROR` frame with code `5000 SLA_VIOLATED` after
+emit an `ERROR` frame with code `5008 SLA_VIOLATED` after
 the response completes (or in lieu of a successful response, if
 the violation occurs mid-stream and the provider chooses to
 terminate).
 
-The error code `5000 SLA_VIOLATED` is **defined in this document**
+The error code `5008 SLA_VIOLATED` is **defined in this document**
 and **registered in the IRP Core error registry** (see
 [IRP Core Protocol](./irp-core.md), section "Error Codes").
 
-The `ERROR` frame for `5000` MUST include the following structured
+The `ERROR` frame for `5008` MUST include the following structured
 fields:
 
 ```
 {
-  "code": 5000,
+  "code": 5008,
   "name": "SLA_VIOLATED",
   "qos_accepted": "interactive",
   "metric": "ttft",          // "ttft" | "total"
@@ -386,7 +399,7 @@ Behaviour after a violation:
   by at least the violation severity (e.g. proportional to
   `observed_ms - budget_ms`); the precise reduction is provider
   policy but MUST be advertised.
-- The client MAY treat a `5000` violation as a failure for the
+- The client MAY treat a `5008` violation as a failure for the
   purposes of retry (subject to the class's retry semantics).
 
 ### 5.4 Receipt fields
@@ -442,7 +455,7 @@ transports, they appear in the transport's metadata channel.
 ### 6.1 `X-IRP-QoS` (request)
 
 ```
-X-IRP-QoS = real-time / interactive / standard / batch / background
+X-IRP-QoS  = realtime / interactive / standard / batch / background
 ```
 
 - **Direction**: client → provider.
@@ -454,7 +467,7 @@ X-IRP-QoS = real-time / interactive / standard / batch / background
 ### 6.2 `X-IRP-QoS-Accepted` (response)
 
 ```
-X-IRP-QoS-Accepted = real-time / interactive / standard / batch / background
+X-IRP-QoS-Accepted  = realtime / interactive / standard / batch / background
 ```
 
 - **Direction**: provider → client.
@@ -496,7 +509,7 @@ X-IRP-Latency-Budget-Ms = 1*DIGIT     ; positive integer milliseconds
 The header values use the following ABNF (per [RFC 5234]):
 
 ```
-qos-class       = "real-time" / "interactive" / "standard"
+qos-class       = "realtime" / "interactive" / "standard"
                 / "batch" / "background"
 
 reason-token    = "capacity" / "not-supported" / "policy"
@@ -526,7 +539,7 @@ MUST satisfy all of the following:
 5. It MUST honour the normative default billing multipliers for
    any class it implements, unless overrides have been advertised
    per [Section 5.5](#55-advertising-overrides).
-6. It MUST emit `5000 SLA_VIOLATED` for any in-budget acceptance
+6. It MUST emit `5008 SLA_VIOLATED` for any in-budget acceptance
    it fails to honour.
 7. It MUST include a `qos` object in receipts whenever a non-
    default negotiation occurred (see
@@ -539,7 +552,7 @@ implementation listed there MUST cross-reference this document.
 Clients MUST be tolerant of providers that do not implement the
 profile: the absence of `X-IRP-QoS-Accepted` in a response
 indicates a non-participating provider, and clients MUST NOT
-treat that as a `5000` violation.
+treat that as a `5008` violation.
 
 ---
 
@@ -549,7 +562,7 @@ treat that as a `5000` violation.
 
 The QoS Profile gives providers a low-friction way to silently
 shift load across tiers. Without discipline, a provider could
-secretly downgrade paying users (e.g. to free up `real-time`
+secretly downgrade paying users (e.g. to free up `realtime`
 capacity for a more profitable customer) and bill them at the
 contracted rate. Such behaviour would defeat the auditability
 goal of IRP.
@@ -580,9 +593,9 @@ operationally acceptable.
 
 ### 8.3 Resource exhaustion at the highest tier
 
-Because `real-time` preempts all lower tiers, an attacker who
-can submit requests at `real-time` can degrade service for other
-classes. Providers MUST gate access to `real-time` (and SHOULD
+Because `realtime` preempts all lower tiers, an attacker who
+can submit requests at `realtime` can degrade service for other
+classes. Providers MUST gate access to `realtime` (and SHOULD
 gate `interactive`) by authenticated quota; an unauthenticated
 caller MUST default to `standard` regardless of the
 `X-IRP-QoS` header.
@@ -618,7 +631,7 @@ Initial entries:
 
 | Identifier            | Short name    | Tier | Reference     |
 |-----------------------|---------------|:----:|---------------|
-| `irp.qos.real-time`   | `real-time`   | 0    | This document |
+| `irp.qos.realtime`   | `realtime`   | 0    | This document |
 | `irp.qos.interactive` | `interactive` | 1    | This document |
 | `irp.qos.standard`    | `standard`    | 2    | This document |
 | `irp.qos.batch`       | `batch`       | 3    | This document |
@@ -657,11 +670,15 @@ Registration policy: **First Come First Served** ([RFC 8126]).
 Tokens MUST match `1*( ALPHA / DIGIT / "-" )` and MUST be
 lowercase.
 
-### 9.4 IRP Error code 5000
+### 9.4 IRP Error code 5008
 
-This document registers the error code `5000 SLA_VIOLATED` in
+This document registers the error code `5008 SLA_VIOLATED` in
 the IRP Core error registry (see [IRP Core Protocol](./irp-core.md),
 section "Error Codes"). The reference is this document.
+
+> **Note:** Code `5008` is chosen because `5000` is already assigned
+to `INTERNAL_ERROR` in IRP Core v0.1. Future versions of IRP Core
+SHOULD document `5008` as the canonical SLA violation code.
 
 ---
 
