@@ -9,15 +9,12 @@ server must use a proper key-management system.
 
 from __future__ import annotations
 
-import base64
 import json
 import time
 import uuid
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs, urlparse
-
-from nacl.signing import SigningKey
 
 from irp.signer import ReceiptSigner
 
@@ -145,6 +142,9 @@ def make_handler(config: ServerConfig) -> type[BaseHTTPRequestHandler]:
             timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
             provider = "reference.irp.example"
 
+            # Minimal receipt: only the 7 mandatory fields per irp-core.md §6.4.
+            # A production server should also include nonce, version, input_hash,
+            # output_hash, latency, cost, and signature_alg per irp-metering.md §4.1.
             receipt_data = {
                 "request_id": request_id,
                 "timestamp": timestamp,
@@ -199,12 +199,16 @@ def make_handler(config: ServerConfig) -> type[BaseHTTPRequestHandler]:
         # Log root (skeleton)
         # ------------------------------------------------------------------
         def _handle_log_root(self, _parsed: urlparse) -> None:
+            # Per irp-metering.md §8.3 root publication format.
             self._send_json(
                 200,
                 {
-                    "root": "0" * 64,
-                    "signature": "0" * 128,
                     "tree_size": 0,
+                    "root_hash": "0" * 64,
+                    "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    "signature": "0" * 128,
+                    "public_key": public_key_b64,
+                    "signature_alg": "ed25519",
                 },
             )
 
@@ -217,12 +221,16 @@ def make_handler(config: ServerConfig) -> type[BaseHTTPRequestHandler]:
             if not request_id or request_id == "unknown":
                 self._send_json(404, {"error": "proof not found"})
                 return
+            # Per irp-metering.md §8.4.2 proof response format.
             self._send_json(
                 200,
                 {
                     "request_id": request_id,
-                    "proof": ["0" * 64],
-                    "root": "0" * 64,
+                    "tree_size": 0,
+                    "leaf_index": 0,
+                    "leaf_hash": "0" * 64,
+                    "audit_path": ["0" * 64],
+                    "root_hash": "0" * 64,
                 },
             )
 
