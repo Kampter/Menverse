@@ -84,23 +84,10 @@ class ReceiptValidator:
 
         # Verify signature if present
         if receipt.signature and receipt.public_key:
-            # Build canonical receipt data for signing
-            receipt_data = {
-                "request_id": receipt.request_id,
-                "timestamp": receipt.timestamp,
-                "provider": receipt.provider,
-                "model": receipt.model,
-                "input_tokens": receipt.input_tokens,
-                "output_tokens": receipt.output_tokens,
-                "total_tokens": receipt.total_tokens,
-            }
-            if receipt.input_hash:
-                receipt_data["input_hash"] = receipt.input_hash
-            if receipt.output_hash:
-                receipt_data["output_hash"] = receipt.output_hash
-
+            # Pass the Receipt object so the verifier can try both new
+            # (full) and legacy (7-field) canonicals for backwards compat.
             sig_valid, sig_error = self._signature_verifier.verify(
-                receipt_data, receipt.signature
+                receipt, receipt.signature
             )
             result.signature_valid = sig_valid
             if sig_error:
