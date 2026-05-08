@@ -166,7 +166,7 @@ receipt fails with `unknown_kid`.
 ```json
 {
   "issuer": "https://api.example-ai.com",
-  "irp_versions_supported": ["0.1"],
+  "irp_versions_supported": ["0.1.0"],
   "capabilities": [
     "irp.core.chat",
     "irp.core.receipts",
@@ -189,7 +189,8 @@ receipt fails with `unknown_kid`.
       "alg": "Ed25519",
       "key_b64": "MCowBQYDK2VwAyEAGb9ECWmEzf6FQbrBZ9w7lshQhqowtrbLDFw4rXAxZuE",
       "use": "receipt-sign",
-      "not_before": "2026-05-01T00:00:00Z"
+      "not_before": "2026-05-01T00:00:00Z",
+      "not_after": "2026-08-01T00:00:00Z"
     }
   ],
   "qos_classes_supported": ["realtime", "interactive", "standard", "batch"],
@@ -399,8 +400,17 @@ RFC 9449 §8.
 When DPoP is used, the provider **SHOULD** include the JWK thumbprint
 (`jkt`) of the client's DPoP key in the receipt's `client_binding` field,
 so that downstream verifiers can confirm the receipt was issued for a
-request from that key. Receipt fields are defined in
-[Core Protocol](./irp-core.md).
+request from that key.
+
+The `client_binding` field is defined by this profile as an extension to
+the Core Receipt schema. It is an object with two fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | string | Binding type: `dpop_jkt` for DPoP, `mtls_thumbprint` for mTLS. |
+| `value` | string | The binding value (JWK thumbprint or certificate thumbprint). |
+
+If the client does not recognize `client_binding`, it **MUST** ignore it.
 
 ### 6.3 Mode C: mTLS (OPTIONAL)
 
@@ -421,7 +431,7 @@ token is also present, both **MUST** validate (mTLS for channel,
 bearer for resource scope).
 
 The provider **SHOULD** include the certificate's SHA-256 thumbprint
-in the receipt's `client_binding` field.
+in the receipt's `client_binding` field, with `type: "mtls_thumbprint"`.
 
 ### 6.4 Auth and receipt signing are independent
 
@@ -793,7 +803,7 @@ Cache-Control: max-age=3600
 
 {
   "issuer": "https://api.example-ai.com",
-  "irp_versions_supported": ["0.1"],
+  "irp_versions_supported": ["0.1.0"],
   "capabilities": [
     "irp.core.chat", "irp.core.receipts",
     "irp.qos.standard", "irp.audit.merkle"
@@ -806,9 +816,14 @@ Cache-Control: max-age=3600
     "log_proof": "https://api.example-ai.com/v1/irp/log/proof"
   },
   "public_keys": [
-    { "kid": "k1", "alg": "Ed25519",
+    {
+      "kid": "k1",
+      "alg": "Ed25519",
       "key_b64": "MCowBQYDK2VwAyEAGb9ECWmEzf6FQbrBZ9w7lshQhqowtrbLDFw4rXAxZuE",
-      "use": "receipt-sign" }
+      "use": "receipt-sign",
+      "not_before": "2026-05-01T00:00:00Z",
+      "not_after": "2026-08-01T00:00:00Z"
+    }
   ]
 }
 ```
