@@ -29,6 +29,15 @@ class CapabilityAdvertisement:
     model_card_urls: dict[str, str] = field(default_factory=dict)
     raw: dict = field(default_factory=dict)
 
+    def __repr__(self) -> str:
+        return (
+            f"CapabilityAdvertisement("
+            f"issuer={self.issuer!r}, "
+            f"capabilities={len(self.capabilities)}, "
+            f"endpoints={list(self.endpoints.keys())}"
+            f")"
+        )
+
     @classmethod
     def from_dict(cls, data: dict) -> "CapabilityAdvertisement":
         """Parse advertisement dict and validate required fields."""

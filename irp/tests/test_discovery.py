@@ -98,6 +98,25 @@ class TestCapabilityAdvertisement:
 
         assert ad.public_key_by_kid("missing") is None
 
+    def test_capability_advertisement_public_key_by_kid_skips_non_dict(self):
+        """Non-dict entries in public_keys MUST be silently skipped."""
+        data = _minimal_advertisement_dict()
+        data["public_keys"].append("not-a-dict")
+        data["public_keys"].append(
+            {"kid": "key-2026-02", "alg": "ed25519", "key_b64": "BBBB"}
+        )
+        ad = CapabilityAdvertisement.from_dict(data)
+
+        assert ad.public_key_by_kid("key-2026-01") is not None
+        assert ad.public_key_by_kid("key-2026-02") is not None
+        assert ad.public_key_by_kid("missing") is None
+
+    def test_capability_advertisement_repr(self):
+        ad = CapabilityAdvertisement.from_dict(_minimal_advertisement_dict())
+        r = repr(ad)
+        assert "CapabilityAdvertisement" in r
+        assert "issuer=" in r
+
 
 class TestIRPDiscovery:
     """Test the IRPDiscovery client."""
@@ -169,13 +188,22 @@ class TestIRPDiscovery:
                 d.fetch()
 
     def test_discovery_fetch_non_dict_json_raises(self):
-        mock_response = self._make_response(200, json_data=None)
-        mock_response.json.return_value = ["not", "an", "object"]
+        """fetch() MUST raise ValueError when response JSON is not a dict."""
+        mock_response = self._make_response(200, json_data=["not", "an", "object"])
 
         with patch("irp.discovery.httpx.get", return_value=mock_response):
             d = IRPDiscovery("https://provider.example.com")
             with pytest.raises(ValueError):
                 d.fetch()
+
+    def test_discovery_fetch_dict_non_dict_json_raises(self):
+        """fetch_dict() MUST raise ValueError when response JSON is not a dict."""
+        mock_response = self._make_response(200, json_data=["not", "an", "object"])
+
+        with patch("irp.discovery.httpx.get", return_value=mock_response):
+            d = IRPDiscovery("https://provider.example.com")
+            with pytest.raises(ValueError):
+                d.fetch_dict()
 
     def test_discovery_fetch_http_error(self):
         mock_response = self._make_response(404)
