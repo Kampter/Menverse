@@ -13,6 +13,14 @@ Provides client-side verification of inference receipts including:
 from .models import Receipt, VerificationResult, LatencyMetrics
 from .receipt import ReceiptValidator
 from .client import IRPClient
+from .version import (
+    LifecycleStatus,
+    ProtocolVersion,
+    VersionEntry,
+    is_removed,
+    negotiate,
+    supported_versions,
+)
 
 __version__ = "0.1.0"
 __all__ = [
@@ -21,4 +29,10 @@ __all__ = [
     "LatencyMetrics",
     "ReceiptValidator",
     "IRPClient",
+    "LifecycleStatus",
+    "ProtocolVersion",
+    "VersionEntry",
+    "is_removed",
+    "negotiate",
+    "supported_versions",
 ]

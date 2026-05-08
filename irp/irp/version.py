@@ -52,6 +52,11 @@ class ProtocolVersion:
             raise ValueError(
                 f"invalid protocol version {s!r}: expected 'MAJOR.MINOR.PATCH'"
             )
+        for p in parts:
+            if len(p) > 1 and p.startswith("0"):
+                raise ValueError(
+                    f"invalid protocol version {s!r}: components must not have leading zeros"
+                )
         try:
             major, minor, patch = (int(p) for p in parts)
         except ValueError as e:
@@ -68,12 +73,17 @@ class ProtocolVersion:
         return f"{self.major}.{self.minor}.{self.patch}"
 
     def is_compatible_with(self, other: "ProtocolVersion") -> bool:
-        """Return True if ``self`` and ``other`` share the same major version.
+        """Return True if ``self`` and ``other`` are compatible.
 
-        This follows the standard semver rule: within a major version,
-        changes are backward-compatible.
+        Same major version guarantees compatibility for stable (major > 0)
+        versions per standard semver. For major 0 (experimental), only
+        identical minor versions are considered compatible.
         """
-        return self.major == other.major
+        if self.major != other.major:
+            return False
+        if self.major == 0:
+            return self.minor == other.minor
+        return True
 
 
 @dataclass(frozen=True)
@@ -116,7 +126,11 @@ def supported_versions() -> list[ProtocolVersion]:
 
 
 def is_removed(version: ProtocolVersion) -> bool:
-    """Return True iff ``version`` is in the registry with status REMOVED."""
+    """Return True iff ``version`` is in the registry with status REMOVED.
+
+    Returns False for versions not present in the registry (i.e. unknown
+    versions are treated as "not removed").
+    """
     for entry in KNOWN_VERSIONS:
         if entry.version == version:
             return entry.status is LifecycleStatus.REMOVED
