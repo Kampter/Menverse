@@ -80,6 +80,8 @@ class IRPClient:
             input_tokens=int(headers.get("x-irp-input-tokens", "0")),
             output_tokens=int(headers.get("x-irp-output-tokens", "0")),
             total_tokens=int(headers.get("x-irp-total-tokens", "0")),
+            reasoning_tokens=_parse_optional_int(headers.get("x-irp-reasoning-tokens")),
+            cached_tokens=_parse_optional_int(headers.get("x-irp-cached-tokens")),
             signature=headers.get("x-irp-signature", ""),
             public_key=headers.get("x-irp-public-key", ""),
             cost_currency=headers.get("x-irp-cost-currency", "USD"),
@@ -100,7 +102,7 @@ class IRPClient:
         """Build request headers that ask for IRP receipt."""
         headers = {
             "x-irp-request": "true",
-            "x-irp-version": "0.1",
+            "x-irp-version": "0.1.0",
         }
         return headers
 
@@ -261,3 +263,13 @@ class IRPResponse:
         if self.irp_verification:
             parts.append(f"status={self.irp_verification.status}")
         return f"<{', '.join(parts)}>"
+
+
+def _parse_optional_int(value: Optional[str]) -> Optional[int]:
+    """Parse an optional header value as int, returning None if missing or empty."""
+    if value is None or value == "":
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        return None
