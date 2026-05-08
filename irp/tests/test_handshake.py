@@ -105,6 +105,50 @@ class TestNegotiate:
         assert response.accepted_capabilities == []
         assert response.rejected_capabilities == []
 
+    def test_negotiate_version_downgrade(self):
+        """When client's versions are all higher than server supports, fail."""
+        request = HandshakeRequest(
+            client_irp_version="1.0.0",
+            client_supported_versions=["1.0.0", "2.0.0"],
+            desired_capabilities=["irp.metering.token-count.v1"],
+        )
+
+        response = negotiate(
+            request=request,
+            server_supported_versions=["0.1.0", "0.2.0"],
+            server_capabilities=["irp.metering.token-count.v1"],
+            server_public_key_kid="kid-4",
+        )
+
+        assert response.error == "no compatible version"
+        assert response.server_irp_version == ""
+        assert response.accepted_capabilities == []
+
+    def test_negotiate_duplicate_capabilities(self):
+        """Duplicate capabilities in request are preserved in accepted list."""
+        request = HandshakeRequest(
+            client_irp_version="0.1.0",
+            client_supported_versions=["0.1.0"],
+            desired_capabilities=[
+                "irp.metering.token-count.v1",
+                "irp.metering.token-count.v1",
+            ],
+        )
+
+        response = negotiate(
+            request=request,
+            server_supported_versions=["0.1.0"],
+            server_capabilities=["irp.metering.token-count.v1"],
+            server_public_key_kid="kid-5",
+        )
+
+        assert response.error is None
+        assert response.accepted_capabilities == [
+            "irp.metering.token-count.v1",
+            "irp.metering.token-count.v1",
+        ]
+        assert response.rejected_capabilities == []
+
 
 class TestHandshakeHeaders:
     """HTTP header (de)serialization."""
@@ -171,6 +215,39 @@ class TestHandshakeHeaders:
                 }
             )
 
+    def test_decode_handshake_headers_whitespace(self):
+        """Whitespace around CSV values is trimmed."""
+        headers = {
+            "X-IRP-Version": "0.1.0",
+            "X-IRP-Versions-Supported": " 0.1.0 , 0.2.0 ",
+            "X-IRP-Capabilities": " cap1 , cap2 ",
+        }
+        req = decode_handshake_headers(headers)
+        assert req.client_supported_versions == ["0.1.0", "0.2.0"]
+        assert req.desired_capabilities == ["cap1", "cap2"]
+
+    def test_decode_handshake_headers_empty_csv_entries(self):
+        """Empty CSV entries are dropped."""
+        headers = {
+            "X-IRP-Version": "0.1.0",
+            "X-IRP-Versions-Supported": "0.1.0,,0.2.0",
+            "X-IRP-Capabilities": "cap1,,cap2",
+        }
+        req = decode_handshake_headers(headers)
+        assert req.client_supported_versions == ["0.1.0", "0.2.0"]
+        assert req.desired_capabilities == ["cap1", "cap2"]
+
+    def test_decode_handshake_headers_empty_csv(self):
+        """Empty CSV string produces empty list."""
+        headers = {
+            "X-IRP-Version": "0.1.0",
+            "X-IRP-Versions-Supported": "",
+            "X-IRP-Capabilities": "",
+        }
+        req = decode_handshake_headers(headers)
+        assert req.client_supported_versions == []
+        assert req.desired_capabilities == []
+
 
 class TestVersionTupleHelper:
     """The internal _version_tuple semver helper."""
@@ -191,3 +268,13 @@ class TestVersionTupleHelper:
         # Reject empty input.
         with pytest.raises(ValueError):
             _version_tuple("")
+
+    def test_version_tuple_negative_component(self):
+        """Negative version components are rejected."""
+        with pytest.raises(ValueError):
+            _version_tuple("1.2.-3")
+
+    def test_version_tuple_extra_components(self):
+        """Versions with more than 3 components are rejected."""
+        with pytest.raises(ValueError):
+            _version_tuple("1.2.3.4")

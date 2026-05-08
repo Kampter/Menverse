@@ -55,9 +55,14 @@ def _version_tuple(version: str) -> tuple[int, ...]:
         )
 
     try:
-        return tuple(int(p) for p in parts)
+        nums = [int(p) for p in parts]
     except ValueError as exc:
         raise ValueError(f"invalid version {version!r}: non-integer component") from exc
+
+    if any(n < 0 for n in nums):
+        raise ValueError(f"invalid version {version!r}: negative component")
+
+    return tuple(nums)
 
 
 def negotiate(
