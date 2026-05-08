@@ -117,7 +117,7 @@ the following fields:
 | Field | Type | Description |
 |-------|------|-------------|
 | `issuer` | string (URL) | Stable identifier of the provider. Receipts signed by this provider MUST carry this `issuer` value. |
-| `irp_versions_supported` | array of strings | List of IRP core protocol versions the provider speaks (e.g. `["0.1"]`). |
+| `irp_versions_supported` | array of strings | List of IRP core protocol versions the provider speaks (e.g. `["0.1.0"]`). |
 | `capabilities` | array of strings | Capability identifiers the provider advertises (see [Section 5](#5-capability-advertisement)). |
 | `endpoints` | object | Map of endpoint name -> absolute HTTPS URL. See [Section 4.4](#44-endpoints-object). |
 | `public_keys` | array of objects | Provider signing keys. Each entry MUST contain `kid`, `alg`, and `key_b64`. See [Section 8](#8-public-key-distribution). |
