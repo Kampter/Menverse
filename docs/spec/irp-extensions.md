@@ -108,7 +108,7 @@ Three principles, drawn from the lessons in
   the review process (§7–§8).
 
 - **Vendor track.** Proprietary extensions. Use the
-  `irp.vendor.<vendor-id>.*` prefix (§9) and MAY ship without review.
+  `irp.vendor.<vendor-id>.*` prefix (§3.4, §8) and MAY ship without review.
   Clients MUST be able to ignore unrecognized vendor extensions safely.
 
 ---
@@ -189,7 +189,7 @@ vendor-id that is misleading, abusive, or attempts to impersonate another
 party.
 
 Receivers MUST NOT fail a connection or receipt solely because a vendor
-identifier is unrecognized; see the skip-on-unknown rule in §9.
+identifier is unrecognized; see the skip-on-unknown rule in §8.3.
 
 ### 3.5 Examples
 
@@ -197,7 +197,7 @@ identifier is unrecognized; see the skip-on-unknown rule in §9.
 | --------------------------------------- | ------ | ----------------------------------------------------------- |
 | `irp.transport.http2`                   | Yes    | Stable Core transport.                                      |
 | `irp.metering.token-count.v1`           | Yes    | Versioned community identifier.                             |
-| `irp.audit.merkle.v1`                   | Yes    | Versioned community identifier.                             |
+| `irp.audit.merkle`                      | Yes    | Unversioned community identifier.                           |
 | `irp.vendor.acme.realtime-burst`        | Yes    | Vendor identifier, no review required.                      |
 | `irp.experimental.cohort-receipt`       | Yes    | Experimental community identifier.                          |
 | `IRP.transport.http2`                   | No     | Uppercase prefix.                                           |
@@ -312,15 +312,31 @@ appeared in this registry.
 
 | Identifier                     | State        | Since | Removed After | Reference                       |
 | ------------------------------ | ------------ | ----- | ------------- | ------------------------------- |
-| `irp.audit.merkle.v1`          | Stable       | 0.1   | —             | [Metering](./irp-metering.md)   |
+| `irp.audit.merkle`             | Stable       | 0.1   | —             | [Metering](./irp-metering.md)   |
 | `irp.audit.tee-attestation`    | Experimental | 0.1   | —             | Deferred to a future profile.   |
 | `irp.audit.zk-proof`           | Experimental | 0.1   | —             | Deferred to a future profile.   |
 
+> **Note on `irp.audit.merkle`:** The Merkle audit log is defined in the
+> [Metering](./irp-metering.md) specification (Section 8). The unversioned
+> identifier is used because the Merkle tree construction has been stable
+> since initial definition. A future breaking change to the tree structure
+> would require registering `irp.audit.merkle.v2`.
+
 ### 5.4 QoS
 
-| Identifier              | State  | Since | Removed After | Reference            |
-| ----------------------- | ------ | ----- | ------------- | -------------------- |
-| `irp.qos.5class.v1`     | Stable | 0.1   | —             | [QoS](./irp-qos.md)  |
+| Identifier                   | State  | Since | Removed After | Reference            |
+| ---------------------------- | ------ | ----- | ------------- | -------------------- |
+| `irp.qos.real-time`          | Stable | 0.1   | —             | [QoS](./irp-qos.md)  |
+| `irp.qos.interactive`        | Stable | 0.1   | —             | [QoS](./irp-qos.md)  |
+| `irp.qos.standard`           | Stable | 0.1   | —             | [QoS](./irp-qos.md)  |
+| `irp.qos.batch`              | Stable | 0.1   | —             | [QoS](./irp-qos.md)  |
+| `irp.qos.background`         | Stable | 0.1   | —             | [QoS](./irp-qos.md)  |
+
+> **Note:** These identifiers match the QoS class definitions in
+> [QoS Profile](./irp-qos.md) Section 3.2 and Section 4. Each identifier
+> corresponds to one of the five normative QoS classes. A provider that
+> implements the QoS Profile MUST advertise the specific classes it supports
+> (at minimum `standard` per the Conformance Profile).
 
 ### 5.5 Auth
 
@@ -363,7 +379,7 @@ appeared in this registry.
 
 Every proposal for a new community identifier — or for a state change
 (e.g., Experimental → Proposed → Stable) — MUST be filed using the
-template below. Vendor-prefixed extensions (§9) do NOT use this template.
+template below. Vendor-prefixed extensions (§8) do NOT use this template.
 
 A proposal MUST include the following sections in order. Each section is
 required unless explicitly marked optional.
@@ -510,7 +526,7 @@ revised proposal with a different identifier MAY be filed.
 ### 7.7 Out-of-Band Channels
 
 The process above is the **only** path to a registered community
-identifier. Private agreements produce vendor-prefixed extensions (§9),
+identifier. Private agreements produce vendor-prefixed extensions (§8),
 not registered identifiers.
 
 ---
@@ -616,8 +632,8 @@ client.capabilities = [
   "irp.metering.token-count.v1",
   "irp.metering.input-hash",
   "irp.metering.output-hash",
-  "irp.audit.merkle.v1",
-  "irp.qos.5class.v1",
+  "irp.audit.merkle",
+  "irp.qos.standard",
   "irp.auth.bearer",
 ]
 
