@@ -129,7 +129,7 @@ fields, their types, and whether they are REQUIRED or OPTIONAL.
 | `output_tokens` | integer | REQUIRED | Number of tokens in the response output as reported by the provider. MUST be ≥ 0. |
 | `reasoning_tokens` | integer | OPTIONAL | Tokens consumed by hidden chain-of-thought / reasoning, if any. MUST be ≥ 0 when present. |
 | `cached_tokens` | integer | OPTIONAL | Tokens served from prompt cache, if applicable. MUST be ≥ 0 when present. |
-| `total_tokens` | integer | REQUIRED | Sum charged for billing. MUST equal `input_tokens + output_tokens + (reasoning_tokens \|\| 0)` minus any provider-defined cache discount; clients MUST be able to reproduce the relation from `policy_id`. |
+| `total_tokens` | integer | REQUIRED | Sum charged for billing. MUST equal `input_tokens + output_tokens + reasoning_tokens` (treating absent `reasoning_tokens` as 0), minus any provider-defined cache discount; clients MUST be able to reproduce the relation from `policy_id`. |
 | `input_hash` | string (hex) | REQUIRED | SHA-256 of the canonical input bytes (Section 9), lowercase hex. 64 characters. |
 | `output_hash` | string (hex) | REQUIRED | SHA-256 of the canonical output bytes (Section 9), lowercase hex. 64 characters. |
 | `latency` | object | REQUIRED | Latency breakdown; see Section 4.2. |
@@ -241,8 +241,7 @@ Given a receipt object `R`:
 
 ### 5.2 String encoding
 
-- Solidus (`/`) MUST NOT be escaped.
-- Forward-slash MUST NOT be escaped.
+- Solidus (`/`, U+002F, forward slash) MUST NOT be escaped.
 - Non-ASCII characters MUST be emitted as raw UTF-8 (NOT `\uXXXX`-escaped),
   except for control characters U+0000–U+001F and U+007F which MUST be
   `\u`-escaped in lowercase hex form (e.g. `	` for tab).
@@ -400,7 +399,8 @@ a partially-valid receipt.
 
    If either exceeds the configured threshold (**default 5%**, configurable per
    policy), FLAG `token_count_mismatch` with both diffs in the flag detail. The
-   client MAY continue verification (e.g. to still check the signature) but
+   client SHOULD continue verification (steps 4--7) to still check hashes and
+   signature, but
    MUST surface the mismatch in the verification result.
 
 7. **Signature verification.** Build the canonical bytes (Section 5) of the
@@ -585,8 +585,11 @@ function verify_inclusion(leaf_hash, leaf_index, tree_size, audit_path, root_has
     last = tree_size - 1
     for sibling in audit_path:
         if idx == last and idx % 2 == 0:
-            # right edge: no sibling to combine, just promote
-            pass  # (audit_path entry skipped per RFC 6962)
+            # right edge: no sibling to combine, promote current hash
+            # This case occurs when the tree size is odd and this node is
+            # the last (rightmost) leaf at its level. Per RFC 6962, the
+            # audit path omits the missing sibling.
+            pass
         elif idx % 2 == 0:
             h = SHA-256(0x01 || h || sibling)
         else:
@@ -642,7 +645,7 @@ The input is hashed as follows, in priority order:
    the provider directory and clients MUST follow that documented rule. The
    binary attachment hashes MUST be inlined as part of the canonical input.
 
-`input_hash` is then `SHA-256(input_bytes)`, lowercase hex.
+`input_hash` is then `SHA-256(input_bytes)`, lowercase hex (64 characters, no prefix).
 
 ### 9.2 Output hash
 
@@ -658,7 +661,7 @@ in the order they appear in the response.
   tokens, all tool calls) and hash the **same bytes** that a non-streaming
   response would produce. The hash MUST NOT depend on chunk boundaries.
 
-`output_hash` is then `SHA-256(output_bytes)`, lowercase hex.
+`output_hash` is then `SHA-256(output_bytes)`, lowercase hex (64 characters, no prefix).
 
 ### 9.3 Determinism
 
