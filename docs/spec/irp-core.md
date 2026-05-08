@@ -319,7 +319,7 @@ The following diagram illustrates a complete IRP interaction:
 +--------+                              +----------+
     |                                         |
     |  1. DISCOVERY                           |
-    |  GET /.well-known/irp                   |
+    |  GET /.well-known/irp-configuration      |
     |---------------------------------------->|
     |     {capabilities, versions, models,    |
     |      public_key, pricing}               |
@@ -648,7 +648,7 @@ Host: api.example.com
 Content-Type: application/json
 Authorization: Bearer <token>
 X-IRP-Request: true
-X-IRP-Version: 0.1
+X-IRP-Version: 0.1.0
 X-IRP-Capabilities: irp.receipt.v1, irp.qos.standard
 X-IRP-Stream-ID: 1
 
@@ -685,7 +685,7 @@ X-IRP-Public-Key: <base64-encoded-ed25519-public-key>
 1. The `X-IRP-Request: true` header in the HTTP request signals that the client wants IRP receipt support.
 2. The `X-IRP-Version` header specifies the protocol version requested.
 3. All receipt fields are transmitted as `X-IRP-*` headers in the HTTP response.
-4. Header names are case-insensitive per HTTP specification, but this document uses the canonical form `X-IRP-Pascal-Case`.
+4. Header names are case-insensitive per HTTP specification ([RFC 7230, Section 3.2](https://tools.ietf.org/html/rfc7230#section-3.2)), but this document uses the canonical form `X-IRP-Pascal-Case`. Implementations MAY use any case when parsing or generating headers.
 5. Header values MUST be ASCII. Binary data (signatures, public keys) MUST be base64-encoded.
 6. Numeric values in headers are represented as decimal strings.
 7. Timestamp values use RFC 3339 format.
@@ -760,7 +760,7 @@ This section defines the exact step-by-step procedures for each phase of the IRP
 ```
 
 2. The Client sends the DISCOVER frame to the Provider's well-known endpoint:
-   - Over HTTP: `GET /.well-known/irp` or `POST /irp/discover`
+   - Over HTTP: `GET /.well-known/irp-configuration`
    - Over WebSocket/TCP: Send DISCOVER frame on stream 0
 
 3. The Provider receives the DISCOVER frame and constructs a DISCOVER_ACK response:
@@ -1026,6 +1026,7 @@ Upon receiving a Receipt, the Client MUST perform the following validation steps
    - Extract the receipt fields that are part of the signed payload.
    - The signed payload MUST include at minimum: `request_id`, `timestamp`, `provider`, `model`, `input_tokens`, `output_tokens`, `total_tokens`.
    - The signed payload SHOULD include `input_hash` and `output_hash` if present.
+   - The signed payload MAY include additional Receipt fields (e.g., `cost_currency`, `cost_input`, `cost_output`, `cost_total`, `latency`, `cached_tokens`, `reasoning_tokens`, `model_version`). Implementations MUST document the exact fields included in the canonicalization scope.
    - Reconstruct the canonical JSON representation: keys sorted lexicographically, no whitespace, compact separators (`,`, `:`).
    - Verify the Ed25519 signature using the Provider's public key obtained during Discovery.
    - If signature verification fails, the Receipt MUST be rejected with status "error".
@@ -1616,6 +1617,8 @@ The following HTTP header fields are defined for use with IRP:
 | `X-IRP-Latency-Total` | http | Standard | Total latency in milliseconds. Value: decimal. |
 | `X-IRP-Latency-TTFT` | http | Standard | Time to first token in milliseconds. Value: decimal. |
 | `X-IRP-Latency-Queue` | http | Standard | Queue time in milliseconds. Value: decimal. |
+| `X-IRP-Reasoning-Tokens` | http | Standard | Number of reasoning tokens (e.g., chain-of-thought). Value: uint32. |
+| `X-IRP-Cached-Tokens` | http | Standard | Number of cached/prefill tokens. Value: uint32. |
 | `X-IRP-Signature` | http | Standard | Ed25519 signature (base64). |
 | `X-IRP-Public-Key` | http | Standard | Ed25519 public key (base64). |
 | `X-IRP-Error-Code` | http | Standard | IRP error code. Value: uint16. |
@@ -1792,14 +1795,15 @@ This appendix provides a normative algorithm for Client-side receipt verificatio
 
 - `receipt`: The Receipt object received from the Provider.
 - `provider_public_key`: The Provider's Ed25519 public key (base64-encoded).
-- `local_input`: The input text or messages sent to the Provider.
-- `local_output`: The output text received from the Provider.
+- `local_input_text`: The input text sent to the Provider (optional).
+- `local_messages`: OpenAI-format messages sent to the Provider (alternative to `local_input_text`).
+- `local_output_text`: The output text received from the Provider.
 - `threshold_percent`: The maximum acceptable token count difference (default: 5.0).
 
 ### A.2 Algorithm
 
 ```
-function verify_receipt(receipt, provider_public_key, local_input, local_output, threshold_percent):
+function verify_receipt(receipt, provider_public_key, local_input_text, local_messages, local_output_text, threshold_percent):
     result = new VerificationResult()
     result.request_id = receipt.request_id
     result.threshold_percent = threshold_percent
@@ -1832,8 +1836,17 @@ function verify_receipt(receipt, provider_public_key, local_input, local_output,
 
     // Step 2: Token count verification
     tokenizer = get_tokenizer(receipt.model)
-    result.local_input_tokens = tokenizer.count(local_input)
-    result.local_output_tokens = tokenizer.count(local_output)
+    if local_messages is not null:
+        result.local_input_tokens = tokenizer.count_messages(local_messages)
+    else if local_input_text is not null:
+        result.local_input_tokens = tokenizer.count(local_input_text)
+    else:
+        result.local_input_tokens = 0
+
+    if local_output_text is not null:
+        result.local_output_tokens = tokenizer.count(local_output_text)
+    else:
+        result.local_output_tokens = 0
     result.server_input_tokens = receipt.input_tokens
     result.server_output_tokens = receipt.output_tokens
 
@@ -1909,7 +1922,7 @@ This appendix provides a complete example of an IRP interaction over HTTP/1.1.
 **Request:**
 
 ```http
-GET /.well-known/irp HTTP/1.1
+GET /.well-known/irp-configuration HTTP/1.1
 Host: api.together.ai
 Accept: application/json
 ```
