@@ -43,8 +43,8 @@ QOS_PARAMETERS: dict[QoSClass, QoSParameters] = {
     ),
     QoSClass.INTERACTIVE: QoSParameters(
         qos_class=QoSClass.INTERACTIVE, tier=1,
-        target_ttft_ms=500, target_total_ms=10_000,
-        retry_semantics="at-most-once", billing_multiplier=1.3,
+        target_ttft_ms=800, target_total_ms=5_000,
+        retry_semantics="at-most-once", billing_multiplier=1.5,
         use_cases=["chat-ui", "ide-assist", "search-rerank"],
     ),
     QoSClass.STANDARD: QoSParameters(
@@ -55,14 +55,14 @@ QOS_PARAMETERS: dict[QoSClass, QoSParameters] = {
     ),
     QoSClass.BATCH: QoSParameters(
         qos_class=QoSClass.BATCH, tier=3,
-        target_ttft_ms=10_000, target_total_ms=600_000,
+        target_ttft_ms=30_000, target_total_ms=3_600_000,
         retry_semantics="at-least-once", billing_multiplier=0.5,
         use_cases=["bulk-data-process", "embedding-build", "label-sweep"],
     ),
     QoSClass.BACKGROUND: QoSParameters(
         qos_class=QoSClass.BACKGROUND, tier=4,
         target_ttft_ms=60_000, target_total_ms=86_400_000,  # up to 24h
-        retry_semantics="exactly-once", billing_multiplier=0.3,
+        retry_semantics="at-least-once", billing_multiplier=0.3,
         use_cases=["nightly-eval", "cold-storage-tag", "telemetry-aggregate"],
     ),
 }

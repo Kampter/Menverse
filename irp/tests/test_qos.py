@@ -84,6 +84,19 @@ def test_select_qos_unsupported_downgrades() -> None:
     assert "standard" in reason
 
 
+def test_select_qos_fallback_to_highest_priority() -> None:
+    """When no lower-priority class exists, fallback to highest-priority supported."""
+    chosen, reason = select_qos(
+        QoSClass.BACKGROUND,
+        [QoSClass.REAL_TIME, QoSClass.INTERACTIVE],
+    )
+    assert chosen is QoSClass.REAL_TIME
+    assert reason is not None
+    assert "background" in reason
+    assert "no lower-priority class available" in reason
+    assert "real-time" in reason
+
+
 def test_select_qos_no_supported_raises() -> None:
     """An empty server_supported list must raise ValueError."""
     with pytest.raises(ValueError):
@@ -100,6 +113,10 @@ def test_parse_qos_class_valid() -> None:
 
 
 def test_parse_qos_class_invalid() -> None:
-    """Unknown strings raise ValueError."""
-    with pytest.raises(ValueError):
+    """Unknown strings raise ValueError with helpful message."""
+    with pytest.raises(ValueError, match="fast") as exc_info:
         parse_qos_class("fast")
+    msg = str(exc_info.value)
+    assert "expected one of" in msg
+    assert "real-time" in msg
+    assert "interactive" in msg
