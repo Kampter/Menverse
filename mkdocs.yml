@@ -1,0 +1,60 @@
+site_name: IRP - Inference Receipt Protocol
+site_description: An open protocol for client-side verifiable AI inference billing
+site_url: https://kampter.github.io/Menverse/
+repo_url: https://github.com/Kampter/Menverse
+repo_name: Kampter/Menverse
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+plugins:
+  - search
+
+markdown_extensions:
+  - tables
+  - fenced_code
+  - toc:
+      permalink: true
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+nav:
+  - Home: index.md
+  - Specifications:
+      - Core Protocol: spec/irp-core.md
+      - Auth & Discovery: spec/irp-auth.md
+      - Metering & Audit: spec/irp-metering.md
+      - QoS Profile: spec/irp-qos.md
+      - Conformance: spec/irp-conformance.md
+      - Extensions: spec/irp-extensions.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/Kampter/Menverse
