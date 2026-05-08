@@ -114,7 +114,7 @@ class IRPError(Exception):
             "name": self.code.name,
             "detail": self.detail,
         }
-        if self.request_id:
+        if self.request_id is not None:
             d["request_id"] = self.request_id
         return d
 

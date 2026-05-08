@@ -68,6 +68,27 @@ def test_irp_error_to_dict_with_request_id():
     assert d["request_id"] == "req-123"
 
 
+def test_irp_error_to_dict_with_empty_request_id():
+    """to_dict includes request_id even when it is an empty string."""
+    err = IRPError(
+        IRPErrorCode.RECEIPT_INVALID,
+        "missing signature",
+        request_id="",
+    )
+    d = err.to_dict()
+    assert "request_id" in d
+    assert d["request_id"] == ""
+
+
+def test_irp_error_default_detail():
+    """IRPError with default detail produces a sensible message."""
+    err = IRPError(IRPErrorCode.AUTH_FAILED)
+    assert err.detail == ""
+    assert "AUTH_FAILED" in str(err)
+    d = err.to_dict()
+    assert d["detail"] == ""
+
+
 def test_irp_error_http_status():
     """The http_status property surfaces the mapped status code."""
     assert IRPError(IRPErrorCode.QUOTA_EXCEEDED).http_status == 429
