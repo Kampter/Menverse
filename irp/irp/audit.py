@@ -150,15 +150,15 @@ class MerkleAuditLog:
         path_idx += 1
         return cls._hash_node(sibling, right), path_idx
 
-    @staticmethod
-    def verify_proof(proof: MerkleProof, root_hash: bytes) -> bool:
+    @classmethod
+    def verify_proof(cls, proof: MerkleProof, root_hash: bytes) -> bool:
         """Reconstruct root from proof and compare with given root_hash."""
         if proof.tree_size <= 0:
             return False
         if proof.leaf_index < 0 or proof.leaf_index >= proof.tree_size:
             return False
 
-        computed, path_idx = MerkleAuditLog._verify(
+        computed, path_idx = cls._verify(
             proof.leaf_hash, proof.leaf_index, proof.tree_size, proof.audit_path, 0
         )
         if computed is None:

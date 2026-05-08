@@ -172,3 +172,88 @@ def test_root_changes_after_append() -> None:
     root_before = log.root_hash()
     log.append(b"c")
     assert log.root_hash() != root_before
+
+
+def test_verify_proof_tree_size_zero_returns_false() -> None:
+    proof = MerkleProof(
+        leaf_index=0,
+        leaf_hash=_leaf(b"x"),
+        audit_path=[],
+        tree_size=0,
+    )
+    assert MerkleAuditLog.verify_proof(proof, _leaf(b"x")) is False
+
+
+def test_verify_proof_negative_leaf_index_returns_false() -> None:
+    proof = MerkleProof(
+        leaf_index=-1,
+        leaf_hash=_leaf(b"x"),
+        audit_path=[],
+        tree_size=1,
+    )
+    assert MerkleAuditLog.verify_proof(proof, _leaf(b"x")) is False
+
+
+def test_verify_proof_leaf_index_out_of_range_returns_false() -> None:
+    proof = MerkleProof(
+        leaf_index=1,
+        leaf_hash=_leaf(b"x"),
+        audit_path=[],
+        tree_size=1,
+    )
+    assert MerkleAuditLog.verify_proof(proof, _leaf(b"x")) is False
+
+
+def test_verify_proof_extra_path_entries_returns_false() -> None:
+    log = MerkleAuditLog()
+    log.append(b"a")
+    root = log.root_hash()
+    proof = log.proof(0)
+    # Audit path for a single-leaf tree is empty; add a bogus entry.
+    tampered = MerkleProof(
+        leaf_index=proof.leaf_index,
+        leaf_hash=proof.leaf_hash,
+        audit_path=[bytes(32)],
+        tree_size=proof.tree_size,
+    )
+    assert MerkleAuditLog.verify_proof(tampered, root) is False
+
+
+def test_verify_proof_too_few_path_entries_returns_false() -> None:
+    log = MerkleAuditLog()
+    log.append(b"a")
+    log.append(b"b")
+    root = log.root_hash()
+    proof = log.proof(0)
+    # Audit path for a 2-leaf tree has 1 entry; strip it.
+    tampered = MerkleProof(
+        leaf_index=proof.leaf_index,
+        leaf_hash=proof.leaf_hash,
+        audit_path=[],
+        tree_size=proof.tree_size,
+    )
+    assert MerkleAuditLog.verify_proof(tampered, root) is False
+
+
+def test_verify_proof_single_leaf_tree() -> None:
+    log = MerkleAuditLog()
+    log.append(b"solo")
+    root = log.root_hash()
+    proof = log.proof(0)
+    assert proof.tree_size == 1
+    assert proof.audit_path == []
+    assert MerkleAuditLog.verify_proof(proof, root) is True
+
+
+def test_audit_path_length_is_correct() -> None:
+    # Audit path length should be ceil(log2(tree_size)) for power-of-2 sizes,
+    # and similarly bounded for non-power-of-2 sizes.
+    log = MerkleAuditLog()
+    for i in range(16):
+        log.append(f"r{i}".encode())
+    for i in range(16):
+        proof = log.proof(i)
+        # Max path length for size n is ceil(log2(n)) when n is power of 2,
+        # but for RFC 6962 it can be up to floor(log2(n)) + 1 for non-power-of-2.
+        # For size 16, max path length is 4.
+        assert len(proof.audit_path) <= 4, f"path too long for leaf {i}"

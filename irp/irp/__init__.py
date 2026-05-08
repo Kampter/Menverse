@@ -10,12 +10,15 @@ Provides client-side verification of inference receipts including:
 - Audit logging
 """
 
+from .audit import MerkleAuditLog, MerkleProof
 from .models import Receipt, VerificationResult, LatencyMetrics
 from .receipt import ReceiptValidator
 from .client import IRPClient
 
 __version__ = "0.1.0"
 __all__ = [
+    "MerkleAuditLog",
+    "MerkleProof",
     "Receipt",
     "VerificationResult",
     "LatencyMetrics",
