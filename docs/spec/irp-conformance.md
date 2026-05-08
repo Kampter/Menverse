@@ -113,9 +113,9 @@ relevant specification and to the golden test vector that exercises it.
 | C3  | Bearer Token authentication                 | Provider accepts `Authorization: Bearer <token>` (Mode A) and rejects malformed / missing tokens with `INVALID_AUTH`.                                                            | [Auth & Discovery §6 Mode A](./irp-auth.md)                          | Procedural (§9.1)        |
 | C4  | Token-count metering                        | Receipts contain integer `input_tokens` and `output_tokens`; reported counts agree with a reference tokenizer for the model within 5%.                                            | [Metering §4](./irp-metering.md)                                     | TV1, TV2                 |
 | C5  | Ed25519 signed receipts                     | Receipts include a base64 Ed25519 signature over the canonical signed payload defined in Metering §5.                                                                            | [Metering §5](./irp-metering.md)                                     | TV1                      |
-| C6  | Anti-replay (nonce + timestamp)             | Each receipt has a unique `request_id` (acting as nonce) and an RFC 3339 `timestamp`; client rejects duplicates within retention window.                                          | [Metering §6](./irp-metering.md)                                     | TV4, TV5                 |
+| C6  | Anti-replay (nonce + timestamp)             | Each receipt has a unique `request_id`, a separate cryptographically-random `nonce` (≥128 bits, base64), and an RFC 3339 `timestamp`; client rejects duplicates within retention window. | [Metering §6](./irp-metering.md)                                     | TV4, TV5                 |
 | C7  | At least QoS class `standard`               | Provider advertises `standard` in the `qos` array of its discovery document and accepts requests asking for it.                                                                 | [QoS Profile §4](./irp-qos.md)                                       | Procedural (§9.1)        |
-| C8  | Standard error codes                        | Errors use the codes enumerated in Core §11 (`INVALID_AUTH`, `RATE_LIMITED`, `TOKEN_DIFF`, `SIG_INVALID`, `REPLAY_DETECTED`, `SKEW_EXCEEDED`, `MODEL_NOT_FOUND`, `INTERNAL`).      | [Core §11](./irp-core.md)                                            | Procedural (§9.1)        |
+| C8  | Standard error codes                        | Errors use the codes enumerated in Core §7 and Metering Appendix B. Core numeric codes: `AUTH_FAILED` (2000), `RATE_LIMITED` (3001), `SIGNATURE_INVALID` (4001), `TOKEN_COUNT_MISMATCH` (4005), `INTERNAL_ERROR` (5000). Conformance string aliases: `INVALID_AUTH`, `RATE_LIMITED`, `SIG_INVALID`, `TOKEN_DIFF`, `REPLAY_DETECTED`, `SKEW_EXCEEDED`, `MODEL_NOT_FOUND`, `INTERNAL`. See §4.2 for the mapping. | [Core §7](./irp-core.md), [Metering Appendix B](./irp-metering.md) | Procedural (§9.1)        |
 | C9  | Public-key publication                      | Discovery document advertises a stable public-key URI returning the provider's current Ed25519 verify key in the published JWK or raw-base64 format.                              | [Auth & Discovery §8](./irp-auth.md)                                 | TV1 (decode + verify)    |
 
 ### 4.1 One-line acceptance summary
@@ -128,6 +128,30 @@ relevant specification and to the golden test vector that exercises it.
 If a provider's implementation cannot be summarised in one sentence
 matching the above, it is not IRP Core compliant.
 
+### 4.2 Error code mapping
+
+The conformance profile uses string error codes for readability. The
+following table maps each conformance string to the normative numeric
+code defined in [IRP Core Protocol §7](./irp-core.md) and to the
+verification flag defined in [Metering Appendix B](./irp-metering.md).
+
+| Conformance string | Core numeric code | Core code name         | Metering flag        | Used in |
+| ------------------ | ----------------- | ---------------------- | -------------------- | ------- |
+| `INVALID_AUTH`     | 2000              | `AUTH_FAILED`          | —                    | C3      |
+| `RATE_LIMITED`     | 3001              | `RATE_LIMITED`         | —                    | C3      |
+| `TOKEN_DIFF`       | 4005              | `TOKEN_COUNT_MISMATCH` | `token_count_mismatch` | C4, V3  |
+| `SIG_INVALID`      | 4001              | `SIGNATURE_INVALID`    | `signature_invalid`    | C5, V1  |
+| `REPLAY_DETECTED`  | —                 | —                      | `replay_detected`      | C6, V5  |
+| `SKEW_EXCEEDED`    | —                 | —                      | `timestamp_skew`       | C6, V2  |
+| `MODEL_NOT_FOUND`  | 3007              | `MODEL_UNAVAILABLE`    | —                    | C8      |
+| `INTERNAL`         | 5000              | `INTERNAL_ERROR`       | —                    | C8      |
+
+> **Note:** `REPLAY_DETECTED` and `SKEW_EXCEEDED` are client-side
+> verification outcomes rather than provider error codes. They correspond
+> to the `replay_detected` and `timestamp_skew` flags in Metering
+> Appendix B and are surfaced as string errors in the conformance test
+> procedure for clarity.
+
 ---
 
 ## 5. IRP Extended Profile
@@ -139,12 +163,12 @@ list is not valid.
 
 | ID  | Optional capability             | Acceptance criterion                                                                                                                                                                 | Spec reference                                            | Test vector |
 | --- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | ----------- |
-| E1  | Merkle audit log                | Provider exposes `GET /v1/irp/log/root` and `GET /v1/irp/log/proof?leaf=<hash>` returning Ed25519-signed roots and inclusion proofs that verify per [Extensions §3](./irp-extensions.md). | [Extensions §3](./irp-extensions.md)                      | TV6, TV7    |
+| E1  | Merkle audit log                | Provider exposes `GET /v1/irp/log/root` and `GET /v1/irp/log/proof?leaf=<hash>` returning Ed25519-signed roots and inclusion proofs that verify per [Metering §8](./irp-metering.md). | [Metering §8](./irp-metering.md)                          | TV6, TV7    |
 | E2  | Content hashes in receipt       | Receipts contain `input_hash` and `output_hash` (SHA-256, lowercase hex of UTF-8 bytes) over the request and response payloads.                                                       | [Metering §5.4](./irp-metering.md)                        | Procedural  |
 | E3  | Multiple QoS classes            | Provider advertises ≥3 of the 5 QoS classes (`realtime`, `interactive`, `standard`, `batch`, `background`) and applies their SLOs as defined in [QoS §4](./irp-qos.md).                | [QoS Profile §4](./irp-qos.md)                            | Procedural  |
 | E4  | DPoP-bound auth                 | Provider supports DPoP-bound bearer tokens per [Auth §6 Mode B](./irp-auth.md) and rejects replayed `jti`s.                                                                            | [Auth & Discovery §6 Mode B](./irp-auth.md)               | Procedural  |
 | E5  | mTLS auth                       | Provider supports mutual-TLS authentication per [Auth §6 Mode C](./irp-auth.md).                                                                                                      | [Auth & Discovery §6 Mode C](./irp-auth.md)               | Procedural  |
-| E6  | Streaming receipts              | Provider emits per-chunk receipts during a streamed response; final receipt aggregates and is signed per [Extensions §4](./irp-extensions.md).                                       | [Extensions §4](./irp-extensions.md)                      | Procedural  |
+| E6  | Streaming receipts              | Provider emits per-chunk receipts during a streamed response; final receipt aggregates and is signed. (Normative spec TBD in a future extension document; see [Extension Registry §5.6](./irp-extensions.md) for the placeholder identifier.) | [Extension Registry §5.6](./irp-extensions.md) (placeholder) | Procedural  |
 
 ### 5.1 Combining extensions
 
@@ -227,12 +251,22 @@ Throughout §8, "canonical JSON" means the bytes produced by:
 json.dumps(obj, sort_keys=True, separators=(",", ":")).encode("utf-8")
 ```
 
-The signed canonical for a receipt covers the following fields **in this
-exact set**: `request_id`, `timestamp`, `provider`, `model`,
-`input_tokens`, `output_tokens`, `total_tokens`, plus the two optional
-fields `input_hash`, `output_hash` when, and only when, they are present.
-Any field the provider adds outside this set is **unsigned data** and
-MUST be ignored by signature verification.
+The signed canonical for a receipt covers the following fields:
+`request_id`, `timestamp`, `provider`, `model`, `input_tokens`,
+`output_tokens`, `total_tokens`, `nonce`, `version`, `signature_alg`,
+plus the two optional fields `input_hash`, `output_hash` when, and only
+when, they are present.
+
+This is the **minimal signed subset** used by the conformance test
+vectors (TV1–TV5). Full receipts per [Metering §4](./irp-metering.md)
+also include `latency`, `cost`, `model_version`, `policy_id`,
+`reasoning_tokens`, and `cached_tokens`; all of these are part of the
+signed canonical per Metering §5.1. An implementation that passes the
+test vectors MUST also handle the full schema to be interoperable.
+
+Fields outside the set present in a receipt (e.g. provider-specific
+extensions) are **unsigned data** and MUST be ignored by signature
+verification.
 
 ---
 
